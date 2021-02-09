@@ -43,7 +43,6 @@ func main() {
 	if err != nil {
 		log.Fatal("Problem reading your .sinkerrc.json file: " + err.Error())
 	}
-	fmt.Println(string((data)))
 	conf, err := parseJsonConfg(data)
 	if err != nil {
 		log.Fatal(err)
