@@ -24,8 +24,7 @@ func readSinkerRc() ([]byte, error) {
 }
 
 type Gist struct {
-	AccessToken string   `json:"access_token"`
-	Entities    []string `json: "entities"`
+	AccessToken string
 }
 type Config struct {
 	Gist
@@ -35,6 +34,9 @@ type Person struct {
 	FirstName string `json: "firstName"`
 	LastName  string `json: "lastName"`
 	Children  []string
+}
+type Conf struct {
+	Gist Gist
 }
 
 // Parses the json from the config.
@@ -53,7 +55,13 @@ func main() {
 	fmt.Println(person.FirstName)
 	fmt.Println(person.LastName)
 	fmt.Println(person.Children)
-
+	k := []byte(`{"gist": {"accessToken": "xxx"}}`)
+	var c Conf
+	err = json.Unmarshal(k, &c)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(c.Gist.AccessToken)
 	data, err := readSinkerRc()
 	fmt.Println(string(data))
 	if err != nil {
