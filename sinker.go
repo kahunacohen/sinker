@@ -23,34 +23,48 @@ func readSinkerRc() ([]byte, error) {
 	return data, nil
 }
 
-type AccessToken struct {
-	AccessToken string `json:"access_token"`
-}
-type Entities struct {
-	Entities []string `json:"entities"`
-}
 type Gist struct {
-	AccessToken
-	Entities
+	AccessToken string   `json:"access_token"`
+	Entities    []string `json: "entities"`
+}
+type Config struct {
+	Gist
+}
+
+type Person struct {
+	FirstName string `json: "firstName"`
+	LastName  string `json: "lastName"`
+	Children  []string
 }
 
 // Parses the json from the config.
-func parseJsonConfg(data []byte) (Gist, error) {
-	var gist Gist
-	err := json.Unmarshal([]byte(data), &gist)
-	return gist, err
+func parseJsonConfg(data []byte) (Config, error) {
+	var config Config
+	err := json.Unmarshal([]byte(data), &config)
+	return config, err
 }
 func main() {
+	j := []byte(`{"lastName": "Cohen",  "firstName":"Aaron",  "children": ["Jesse"]}`)
+	var person Person
+	err := json.Unmarshal(j, &person)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(person.FirstName)
+	fmt.Println(person.LastName)
+	fmt.Println(person.Children)
+
 	data, err := readSinkerRc()
+	fmt.Println(string(data))
 	if err != nil {
 		log.Fatal("Problem reading your .sinkerrc.json file: " + err.Error())
 	}
-	fmt.Println(string(data))
-	gist, err := parseJsonConfg(data)
+	//fmt.Println(string(data))
+	config, err := parseJsonConfg(data)
 	if err != nil {
 		log.Fatal(err)
 	} else {
-		fmt.Println(gist)
+		fmt.Println(config)
 	}
 
 }
