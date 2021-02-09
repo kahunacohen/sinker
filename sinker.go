@@ -39,16 +39,6 @@ func parseJsonConfg(data []byte) (Conf, error) {
 	return conf, err
 }
 func main() {
-	/*
-		k := []byte(`{"gist": {"accessToken": "xxx", "files": ["~/.bashrc"]}}`)
-		var c Conf
-		err := json.Unmarshal(k, &c)
-		if err != nil {
-			fmt.Println(err)
-		}
-		fmt.Println(c.Gist.AccessToken)
-		fmt.Println(c.Gist.Files)
-	*/
 	data, err := readSinkerRc()
 	if err != nil {
 		log.Fatal("Problem reading your .sinkerrc.json file: " + err.Error())
