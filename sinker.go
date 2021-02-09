@@ -25,6 +25,7 @@ func readSinkerRc() ([]byte, error) {
 
 type Gist struct {
 	AccessToken string
+	Files       []string
 }
 type Config struct {
 	Gist
@@ -55,13 +56,15 @@ func main() {
 	fmt.Println(person.FirstName)
 	fmt.Println(person.LastName)
 	fmt.Println(person.Children)
-	k := []byte(`{"gist": {"accessToken": "xxx"}}`)
+	k := []byte(`{"gist": {"accessToken": "xxx", "files": ["~/.bashrc"]}}`)
 	var c Conf
 	err = json.Unmarshal(k, &c)
 	if err != nil {
 		fmt.Println(err)
 	}
 	fmt.Println(c.Gist.AccessToken)
+
+	fmt.Println(c.Gist.Files)
 	data, err := readSinkerRc()
 	fmt.Println(string(data))
 	if err != nil {
