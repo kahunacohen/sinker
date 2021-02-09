@@ -27,39 +27,38 @@ type Gist struct {
 	AccessToken string
 	Files       []string
 }
-type Config struct {
-	Gist
-}
 
 type Conf struct {
 	Gist Gist
 }
 
 // Parses the json from the config.
-func parseJsonConfg(data []byte) (Config, error) {
-	var config Config
-	err := json.Unmarshal([]byte(data), &config)
-	return config, err
+func parseJsonConfg(data []byte) (Conf, error) {
+	var conf Conf
+	err := json.Unmarshal(data, &conf)
+	return conf, err
 }
 func main() {
-	k := []byte(`{"gist": {"accessToken": "xxx", "files": ["~/.bashrc"]}}`)
-	var c Conf
-	err := json.Unmarshal(k, &c)
-	if err != nil {
-		fmt.Println(err)
-	}
-	fmt.Println(c.Gist.AccessToken)
-	fmt.Println(c.Gist.Files)
+	/*
+		k := []byte(`{"gist": {"accessToken": "xxx", "files": ["~/.bashrc"]}}`)
+		var c Conf
+		err := json.Unmarshal(k, &c)
+		if err != nil {
+			fmt.Println(err)
+		}
+		fmt.Println(c.Gist.AccessToken)
+		fmt.Println(c.Gist.Files)
+	*/
 	data, err := readSinkerRc()
-	fmt.Println(string(data))
 	if err != nil {
 		log.Fatal("Problem reading your .sinkerrc.json file: " + err.Error())
 	}
-	config, err := parseJsonConfg(data)
+	fmt.Println(string((data)))
+	conf, err := parseJsonConfg(data)
 	if err != nil {
 		log.Fatal(err)
-	} else {
-		fmt.Println(config)
 	}
+	fmt.Println(conf.Gist.Files[0])
+	fmt.Println(conf.Gist.AccessToken)
 
 }
