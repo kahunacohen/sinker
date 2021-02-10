@@ -1,21 +1,16 @@
 package main
 
 import (
+	"conf/conf"
 	"fmt"
-	"github.com/kahunacohen/sinker/conf"
 	"log"
 )
 
 func main() {
-	data, err := conf.ReadSinkerRc()
+	config, err := conf.Get()
 	if err != nil {
-		log.Fatal("Problem reading your .sinkerrc.json file: " + err.Error())
+		log.Fatal(err.Error())
 	}
-	config, err := conf.ParseJsonConfg(data)
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println(config.Gist.Files[0])
 	fmt.Println(config.Gist.AccessToken)
 
 }

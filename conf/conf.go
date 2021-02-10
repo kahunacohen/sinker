@@ -36,3 +36,16 @@ func ParseJsonConfg(data []byte) (Conf, error) {
 	err := json.Unmarshal(data, &conf)
 	return conf, err
 }
+
+// Gets the configuration data
+func Get() (*Conf, error) {
+	data, err := ReadSinkerRc()
+	if err != nil {
+		return nil, err
+	}
+	conf, err := ParseJsonConfg(data)
+	if err != nil {
+		return nil, err
+	}
+	return &conf, nil
+}
