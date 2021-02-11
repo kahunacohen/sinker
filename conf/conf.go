@@ -2,6 +2,7 @@ package conf
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
@@ -41,6 +42,7 @@ func ParseJsonConfg(data []byte) (Conf, error) {
 func Get() (*Conf, error) {
 	data, err := ReadSinkerRc()
 	if err != nil {
+		fmt.Println("here")
 		return nil, err
 	}
 	conf, err := ParseJsonConfg(data)
