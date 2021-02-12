@@ -1,7 +1,10 @@
 package conf
 
 import (
+	"io/ioutil"
 	"testing"
+
+	"github.com/spf13/afero"
 )
 
 func TestParseJsonConfig(t *testing.T) {
@@ -44,4 +47,24 @@ func TestParseJsonConfigBadParse(t *testing.T) {
 	if errorGot != errorWant {
 		t.Errorf("wanted \"%s\" for error, got \"%s\"", errorWant, errorGot)
 	}
+}
+func TestGet(t *testing.T) {
+	var AppFs = afero.NewMemMapFs()
+	sinkerRcPath := "~/.sinkerrc.json"
+	jsonByte := []byte(`{
+		"gist: {
+			"accessToken": "xxx",
+			"files": ["a", "b"]
+		}
+	}`)
+	emptyFile, err := AppFs.Create(sinkerRcPath)
+	if err != nil {
+		t.Error("not able to create test config file in memory file system")
+	}
+	emptyFile.Close()
+	err = ioutil.WriteFile(sinkerRcPath, jsonByte, 0644)
+	if err != nil {
+		t.Errorf("not able to write test config file in memory file system: %s", err)
+	}
+
 }
