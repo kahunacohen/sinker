@@ -38,7 +38,9 @@ func ParseJsonConfg(data []byte) (Conf, error) {
 	return conf, err
 }
 
-// Gets the configuration data
+// Gets the configuration data as a Conf struct.
+// The caller can directly reference fields on the struct
+// because golang allows (*P).f to be accessed as P.f.
 func Get() (*Conf, error) {
 	data, err := ReadSinkerRc()
 	if err != nil {
