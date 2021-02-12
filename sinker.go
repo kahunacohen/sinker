@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	config, err := conf.Get()
+	config, err := conf.Get("/Users/acohen/.sinkerrc.json")
 	if err != nil {
 		log.Fatal(err.Error())
 	}

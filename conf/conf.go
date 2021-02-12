@@ -2,10 +2,7 @@ package conf
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
-	"os"
-	"path"
 )
 
 type Gist struct {
@@ -19,12 +16,8 @@ type Conf struct {
 
 // Attempts to read  the .sinkerrc.json file in the user's
 // home directory
-func ReadSinkerRc() ([]byte, error) {
-	homdir, err := os.UserHomeDir()
-	if err != nil {
-		return nil, err
-	}
-	data, err := ioutil.ReadFile(path.Join(homdir, ".sinkerrc.json"))
+func ReadSinkerRc(dir string) ([]byte, error) {
+	data, err := ioutil.ReadFile(dir)
 	if err != nil {
 		return nil, err
 	}
@@ -41,10 +34,9 @@ func ParseJsonConfg(data []byte) (Conf, error) {
 // Gets the configuration data as a Conf struct.
 // The caller can directly reference fields on the struct
 // because golang allows (*P).f to be accessed as P.f.
-func Get() (*Conf, error) {
-	data, err := ReadSinkerRc()
+func Get(dir string) (*Conf, error) {
+	data, err := ReadSinkerRc(dir)
 	if err != nil {
-		fmt.Println("here")
 		return nil, err
 	}
 	conf, err := ParseJsonConfg(data)

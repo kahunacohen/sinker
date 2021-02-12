@@ -50,21 +50,32 @@ func TestParseJsonConfigBadParse(t *testing.T) {
 }
 func TestGet(t *testing.T) {
 	var AppFs = afero.NewMemMapFs()
-	sinkerRcPath := "~/.sinkerrc.json"
+	sinkerRcPath := "./sinkerrc.json"
+
+	configFile, err := AppFs.Create(sinkerRcPath)
+	if err != nil {
+		t.Error("not able to create test config file in memory file system")
+	}
+	configFile.Close()
 	jsonByte := []byte(`{
-		"gist: {
+		"gist": {
 			"accessToken": "xxx",
 			"files": ["a", "b"]
 		}
 	}`)
-	emptyFile, err := AppFs.Create(sinkerRcPath)
-	if err != nil {
-		t.Error("not able to create test config file in memory file system")
-	}
-	emptyFile.Close()
 	err = ioutil.WriteFile(sinkerRcPath, jsonByte, 0644)
+
 	if err != nil {
 		t.Errorf("not able to write test config file in memory file system: %s", err)
+	}
+	conf, err := Get(sinkerRcPath)
+	if err != nil {
+		t.Errorf("problem getting or parsing config file: %s", err)
+	}
+	want := "xxx"
+	got := conf.Gist.AccessToken
+	if got != want {
+		t.Errorf("want access token %s, got %s", want, got)
 	}
 
 }
