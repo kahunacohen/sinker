@@ -5,9 +5,13 @@ import (
 	"io/ioutil"
 )
 
+type File struct {
+	Path string
+	Id   string
+}
 type Gist struct {
 	AccessToken string
-	Files       []string
+	Files       []File
 }
 
 type Conf struct {

@@ -2,16 +2,20 @@ package conf
 
 import (
 	"io/ioutil"
+	"os"
 	"testing"
-
-	"github.com/spf13/afero"
 )
 
 func TestParseJsonConfig(t *testing.T) {
 	jsonByte := []byte(`{
 		"gist": {
 			"accessToken": "xxx",
-			"files": ["a", "b"]
+			"files": [
+				{
+					"path": "/a/b",
+					 "id": "123"
+				}
+			]
 		}
 	}`)
 	config, err := ParseJsonConfg(jsonByte)
@@ -19,15 +23,16 @@ func TestParseJsonConfig(t *testing.T) {
 		t.Fatalf("Didn't expect error, but got %s", err)
 	}
 	if config.Gist.AccessToken != "xxx" {
-		t.Errorf("Expected access token to equal xxx but got %v", config.Gist.AccessToken)
+		t.Fatalf("Expected access token to equal xxx but got %v", config.Gist.AccessToken)
 	}
 	got := config.Gist.Files
 	lenGot := len(got)
-	if lenGot != 2 {
-		t.Errorf("Expected files to be length 2, but got %d", lenGot)
+	if lenGot != 1 {
+		t.Fatalf("Expected files to be length 2, but got %d", lenGot)
 	}
-	if got[0] != "a" || got[1] != "b" {
-		t.Errorf("One of the files is not what we expect. Got: %s, %s", got[0], got[1])
+	file := got[0]
+	if file.Path != "/a/b" || file.Id != "123" {
+		t.Errorf("the file is not what we expect. Got: Path: %s and Id: %s", file.Path, file.Id)
 	}
 }
 
@@ -35,7 +40,7 @@ func TestParseJsonConfigBadParse(t *testing.T) {
 	jsonByte := []byte(`{
 		"gist: {
 			"accessToken": "xxx",
-			"files": ["a", "b"]
+			"files": []
 		}
 	}`)
 	config, err := ParseJsonConfg(jsonByte)
@@ -49,25 +54,19 @@ func TestParseJsonConfigBadParse(t *testing.T) {
 	}
 }
 func TestGet(t *testing.T) {
-	var AppFs = afero.NewMemMapFs()
 	sinkerRcPath := "./sinkerrc.json"
-
-	configFile, err := AppFs.Create(sinkerRcPath)
-	if err != nil {
-		t.Error("not able to create test config file in memory file system")
-	}
-	configFile.Close()
 	jsonByte := []byte(`{
 		"gist": {
 			"accessToken": "xxx",
-			"files": ["a", "b"]
+			"files": []
 		}
 	}`)
-	err = ioutil.WriteFile(sinkerRcPath, jsonByte, 0644)
-
+	err := ioutil.WriteFile(sinkerRcPath, jsonByte, 0664)
+	defer os.Remove(sinkerRcPath)
 	if err != nil {
-		t.Errorf("not able to write test config file in memory file system: %s", err)
+		t.Fatalf("not able to create test config file: %s", err)
 	}
+
 	conf, err := Get(sinkerRcPath)
 	if err != nil {
 		t.Errorf("problem getting or parsing config file: %s", err)
