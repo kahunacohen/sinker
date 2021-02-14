@@ -1,9 +1,10 @@
 package main
 
 import (
-	"conf/conf"
 	"fmt"
 	"log"
+
+	"github.com/kahunacohen/sinker/conf"
 )
 
 func main() {
