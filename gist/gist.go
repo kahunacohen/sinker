@@ -1,6 +1,7 @@
 package gist
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -11,10 +12,10 @@ import (
 const gistApiUrl string = "https://api.github.com/gists/%s"
 
 // Gets a gist info by ID
-func GetInfo(id string) (string, error) {
+func GetInfo(id string) (map[string]interface{}, error) {
 	res, err := http.Get(fmt.Sprintf(gistApiUrl, id))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer res.Body.Close()
 	if res.StatusCode != 200 {
@@ -22,7 +23,12 @@ func GetInfo(id string) (string, error) {
 	}
 	bytes, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return string(bytes), err
+	var objmap map[string]interface{}
+	err = json.Unmarshal(bytes, &objmap)
+	if err != nil {
+		return nil, err
+	}
+	return objmap, nil
 }
