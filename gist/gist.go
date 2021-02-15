@@ -18,7 +18,7 @@ const gistApiUrl string = "https://api.github.com/gists/%s"
 
 var _c *github.Client = nil
 
-func AuthClient(accessToken string) *github.Client {
+func Client(accessToken string) *github.Client {
 	if _c == nil {
 		log.Println("create auth client")
 		ctx := context.Background()
