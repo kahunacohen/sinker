@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
 
@@ -14,9 +13,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-	fmt.Println(config.Gist.AccessToken)
-	c := gist.Client(config.Gist.AccessToken)
-	gist, resp, err := c.Gists.Get(context.Background(), "142a4dfb66f0e2eab38cb68e0b69d95c")
+	//c := gist.Client(config.Gist.AccessToken)
+	gist, resp, err := gist.Get(config.Gist.AccessToken, "142a4dfb66f0e2eab38cb68e0b69d95c")
 	if err != nil {
 		log.Fatalf("couldn't get gist: %s", err)
 	}
