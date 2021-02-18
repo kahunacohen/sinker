@@ -10,8 +10,6 @@ import (
 	"github.com/google/go-github/v33/github"
 )
 
-const gistApiUrl string = "https://api.github.com/gists/%s"
-
 var c *github.Client = nil
 
 func Client(accessToken string) *github.Client {
