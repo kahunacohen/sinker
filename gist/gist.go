@@ -12,7 +12,8 @@ import (
 
 var c *github.Client = nil
 
-func Client(accessToken string) *github.Client {
+// Wraps the github golang sdk authorized client.
+func client(accessToken string) *github.Client {
 	if c == nil {
 		log.Println("create auth client")
 		ctx := context.Background()
@@ -25,6 +26,7 @@ func Client(accessToken string) *github.Client {
 	return c
 }
 
+// Get a gist named given a personal access token and a gist ID.
 func Get(accessToken string, id string) (*github.Gist, *github.Response, error) {
-	return Client(accessToken).Gists.Get(context.Background(), id)
+	return client(accessToken).Gists.Get(context.Background(), id)
 }
