@@ -2,6 +2,7 @@ package gist
 
 import (
 	"log"
+	"os"
 
 	"golang.org/x/oauth2"
 
@@ -24,6 +25,12 @@ func client(accessToken string) *github.Client {
 		c = github.NewClient(tc)
 	}
 	return c
+}
+
+// Given a file handle, gist ID and a gist, returns whether the file
+// was modified after the gist.
+func FileModifiedLast(f *os.File, data github.Gist) {
+	f.Stat()
 }
 
 // Get a gist named given a personal access token and a gist ID.

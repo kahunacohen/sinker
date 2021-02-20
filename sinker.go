@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/kahunacohen/sinker/conf"
 	"github.com/kahunacohen/sinker/gist"
@@ -14,13 +15,26 @@ func main() {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-	gist, resp, err := gist.Get(config.Gist.AccessToken, "142a4dfb66f0e2eab38cb68e0b69d95c")
-	if err != nil {
-		log.Fatalf("couldn't get gist: %s", err)
-	}
 
-	if resp.Response.StatusCode != 200 {
-		log.Fatalf("response from github was %d", resp.Response.StatusCode)
+	for _, file := range config.Gist.Files {
+		fh, err := os.Open(file.Path)
+		if err != nil {
+			log.Fatalf("problem reading file: %s", err)
+		}
+		stat, err := fh.Stat()
+		if err != nil {
+			log.Fatal("could not get file stat: %s", err)
+		}
+		fileUpdatedAt := stat.ModTime()
+		fmt.Printf("file last modified: %v\n", fileUpdatedAt)
+		gist, resp, err := gist.Get(config.Gist.AccessToken, file.Id)
+		if err != nil {
+			log.Fatalf("couldn't get gist: %s", err)
+		}
+		if resp.Response.StatusCode != 200 {
+			log.Fatalf("response from github was %d", resp.Response.StatusCode)
+		}
+		fmt.Printf("gist last modified: %v\n", gist.UpdatedAt)
+		fmt.Printf("File was modified after gist? %t\n", fileUpdatedAt.After(*gist.UpdatedAt))
 	}
-	fmt.Println(gist)
 }
