@@ -1,6 +1,7 @@
 package gist
 
 import (
+	"fmt"
 	"log"
 	"os"
 
@@ -27,13 +28,27 @@ func client(accessToken string) *github.Client {
 	return c
 }
 
-// Given a file handle, gist ID and a gist, returns whether the file
-// was modified after the gist.
-func FileModifiedLast(f *os.File, data github.Gist) {
-	f.Stat()
-}
-
 // Get a gist named given a personal access token and a gist ID.
 func Get(accessToken string, id string) (*github.Gist, *github.Response, error) {
 	return client(accessToken).Gists.Get(context.Background(), id)
+}
+
+func Sync(accessToken string, fh *os.File, gistId string) ([]byte, error) {
+	stat, err := fh.Stat()
+	if err != nil {
+		return nil, fmt.Errorf("%w; could not get file stat", err)
+	}
+	fileUpdatedAt := stat.ModTime()
+	gist, resp, err := Get(accessToken, gistId)
+	if err != nil {
+		log.Fatalf("couldn't get gist: %s", err)
+	}
+	if resp.Response.StatusCode != 200 {
+		log.Fatalf("response from github was %d", resp.Response.StatusCode)
+	}
+	log.Printf("file %s last modified: %v\n", fh.Name(), fileUpdatedAt)
+	log.Printf("gist %s last modified: %v\n", "foo", gist.UpdatedAt)
+	log.Printf("file was modified after gist? %t\n", fileUpdatedAt.After(*gist.UpdatedAt))
+
+	return []byte("ABC"), nil
 }
