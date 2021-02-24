@@ -41,10 +41,10 @@ func Sync(accessToken string, fh *os.File, gistId string) ([]byte, error) {
 	fileUpdatedAt := stat.ModTime()
 	gist, resp, err := Get(accessToken, gistId)
 	if err != nil {
-		log.Fatalf("couldn't get gist: %s", err)
+		return nil, fmt.Errorf("couldn't get gist; %w", err)
 	}
 	if resp.Response.StatusCode != 200 {
-		log.Fatalf("response from github was %d", resp.Response.StatusCode)
+		return nil, fmt.Errorf("response from github was %d", resp.Response.StatusCode)
 	}
 	log.Printf("file %s last modified: %v\n", fh.Name(), fileUpdatedAt)
 	log.Printf("gist %s last modified: %v\n", "foo", gist.UpdatedAt)

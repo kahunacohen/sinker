@@ -20,6 +20,9 @@ func main() {
 		if err != nil {
 			log.Fatalf("problem reading file: %s", err)
 		}
-		gist.Sync(config.Gist.AccessToken, fh, file.Id)
+		_, err = gist.Sync(config.Gist.AccessToken, fh, file.Id)
+		if err != nil {
+			log.Fatalf(err.Error())
+		}
 	}
 }
