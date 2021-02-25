@@ -47,7 +47,7 @@ func Sync(accessToken string, fh *os.File, gistId string) ([]byte, error) {
 		return nil, fmt.Errorf("response from github was %d", resp.Response.StatusCode)
 	}
 	log.Printf("file %s last modified: %v\n", fh.Name(), fileUpdatedAt)
-	log.Printf("gist %s last modified: %v\n", "foo", gist.UpdatedAt)
+	log.Printf("gist last modified: %v\n", gist.UpdatedAt)
 	log.Printf("file was modified after gist? %t\n", fileUpdatedAt.After(*gist.UpdatedAt))
 
 	return []byte("ABC"), nil
