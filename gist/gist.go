@@ -30,25 +30,28 @@ func client(accessToken string) *github.Client {
 
 // Get a gist named given a personal access token and a gist ID.
 func Get(accessToken string, id string) (*github.Gist, *github.Response, error) {
+	fmt.Println("get")
 	return client(accessToken).Gists.Get(context.Background(), id)
 }
 
-func Sync(accessToken string, fh *os.File, gistId string) ([]byte, error) {
+func Sync(accessToken string, fh *os.File, gistId string) (string, error) {
 	stat, err := fh.Stat()
 	if err != nil {
-		return nil, fmt.Errorf("%w; could not get file stat", err)
+		return "", fmt.Errorf("%w; could not get file stat", err)
 	}
 	fileUpdatedAt := stat.ModTime()
 	gist, resp, err := Get(accessToken, gistId)
 	if err != nil {
-		return nil, fmt.Errorf("couldn't get gist; %w", err)
+		return "", fmt.Errorf("couldn't get gist; %w", err)
 	}
 	if resp.Response.StatusCode != 200 {
-		return nil, fmt.Errorf("response from github was %d", resp.Response.StatusCode)
+		return "", fmt.Errorf("response from github was %d", resp.Response.StatusCode)
 	}
 	log.Printf("file %s last modified: %v\n", fh.Name(), fileUpdatedAt)
 	log.Printf("gist last modified: %v\n", gist.UpdatedAt)
 	log.Printf("file was modified after gist? %t\n", fileUpdatedAt.After(*gist.UpdatedAt))
 
-	return []byte("ABC"), nil
+	name := github.GistFilename(stat.Name())
+	content := string(*gist.Files[name].Content)
+	return content, nil
 }
