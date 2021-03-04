@@ -9,13 +9,13 @@ import (
 	"github.com/kahunacohen/sinker/gist"
 )
 
-func doIt(config conf.Conf, file conf.File) *gist.SyncResponse {
+func doIt(config conf.Conf, file conf.File, which chan *gist.SyncResponse) {
 	fh, err := os.Open(file.Path)
 	if err != nil {
 		log.Fatalf("problem reading file: %s", err)
 	}
 	resp := gist.Sync(config.Gist.AccessToken, fh, file.Id)
-	return &resp
+	which <- &resp
 }
 
 func main() {
@@ -25,13 +25,14 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
+	which := make(chan *gist.SyncResponse, len(config.Gist.Files))
 	for _, file := range config.Gist.Files {
-
-		resp := doIt(*config, file)
-		if resp.Error != nil {
-			log.Fatal(resp.Error)
+		doIt(*config, file, which)
+	}
+	for i := range config.Gist.Files {
+		<-which
+		if i == len(config.Gist.Files)-1 {
+			close(which)
 		}
-		log.Println(resp)
-
 	}
 }
