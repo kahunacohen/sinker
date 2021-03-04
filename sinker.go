@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 
@@ -10,16 +9,13 @@ import (
 	"github.com/kahunacohen/sinker/gist"
 )
 
-func doIt(config conf.Conf, file conf.File) {
+func doIt(config conf.Conf, file conf.File) *gist.SyncResponse {
 	fh, err := os.Open(file.Path)
 	if err != nil {
 		log.Fatalf("problem reading file: %s", err)
 	}
 	resp := gist.Sync(config.Gist.AccessToken, fh, file.Id)
-	if resp.Error != nil {
-		log.Fatalf(err.Error())
-	}
-	fmt.Println(resp.LocalModLast)
+	return &resp
 }
 
 func main() {
@@ -30,7 +26,12 @@ func main() {
 	}
 
 	for _, file := range config.Gist.Files {
-		doIt(*config, file)
+
+		resp := doIt(*config, file)
+		if resp.Error != nil {
+			log.Fatal(resp.Error)
+		}
+		log.Println(resp)
 
 	}
 }
