@@ -26,7 +26,7 @@ func main() {
 		if resp.Error != nil {
 			log.Fatalf(err.Error())
 		}
-		fmt.Println(resp.Local)
+		fmt.Println(resp.LocalModLast)
 
 	}
 }
