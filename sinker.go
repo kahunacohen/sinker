@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 
@@ -21,10 +22,11 @@ func main() {
 		if err != nil {
 			log.Fatalf("problem reading file: %s", err)
 		}
-		_, err = gist.Sync(config.Gist.AccessToken, fh, file.Id)
-		if err != nil {
+		resp := gist.Sync(config.Gist.AccessToken, fh, file.Id)
+		if resp.Error != nil {
 			log.Fatalf(err.Error())
 		}
+		fmt.Println(resp.Local)
 
 	}
 }
