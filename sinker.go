@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 
@@ -27,10 +28,11 @@ func main() {
 
 	which := make(chan *gist.SyncResponse, len(config.Gist.Files))
 	for _, file := range config.Gist.Files {
-		doIt(*config, file, which)
+		go doIt(*config, file, which)
 	}
 	for i := range config.Gist.Files {
-		<-which
+		x := <-which
+		fmt.Println(x)
 		if i == len(config.Gist.Files)-1 {
 			close(which)
 		}
