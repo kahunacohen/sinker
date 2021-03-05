@@ -2,7 +2,6 @@ package gist
 
 import (
 	"fmt"
-	"log"
 	"os"
 
 	"golang.org/x/oauth2"
@@ -17,7 +16,7 @@ var c *github.Client = nil
 // Wraps the github golang sdk authorized client.
 func client(accessToken string) *github.Client {
 	if c == nil {
-		log.Println("create auth client")
+		// log.Println("create auth client")
 		ctx := context.Background()
 		ts := oauth2.StaticTokenSource(
 			&oauth2.Token{AccessToken: accessToken},
@@ -55,10 +54,10 @@ func Sync(accessToken string, fh *os.File, gistId string) SyncResponse {
 	if resp.Response.StatusCode != 200 {
 		return SyncResponse{Content: "", LocalModLast: false, Error: fmt.Errorf("response from github was %d", resp.Response.StatusCode)}
 	}
-	log.Printf("file %s last modified: %v\n", fh.Name(), fileUpdatedAt)
-	log.Printf("gist last modified: %v\n", gist.UpdatedAt)
+	// log.Printf("file %s last modified: %v\n", fh.Name(), fileUpdatedAt)
+	// log.Printf("gist last modified: %v\n", gist.UpdatedAt)
 	localUpdatedLast := fileUpdatedAt.After(*gist.UpdatedAt)
-	log.Printf("file was modified after gist? %t\n", fileUpdatedAt.After(*gist.UpdatedAt))
+	// log.Printf("file was modified after gist? %t\n", fileUpdatedAt.After(*gist.UpdatedAt))
 	name := github.GistFilename(stat.Name())
 	return SyncResponse{LocalModLast: localUpdatedLast, Content: string(*gist.Files[name].Content), Error: nil}
 }
