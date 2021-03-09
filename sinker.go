@@ -1,7 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"log"
+
+	"path/filepath"
 
 	"github.com/kahunacohen/sinker/conf"
 
@@ -22,11 +25,13 @@ func main() {
 	}
 	for i := range config.Gist.Files {
 		comparison := <-comparisonChan
-		if comparison.File != nil {
-			log.Println("The file is newer")
+		log.Printf("%s:", filepath.Base(comparison.File.Name()))
+		if comparison.FileNewer {
+			log.Println("The FILE is newer")
 		} else {
-			log.Println("The gist is newer")
+			log.Println("The GIST is newer")
 		}
+		fmt.Println("")
 		if i == len(config.Gist.Files)-1 {
 			close(comparisonChan)
 		}

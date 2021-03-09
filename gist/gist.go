@@ -39,36 +39,31 @@ func Get(accessToken string, id string) (*github.Gist, *github.Response, error) 
 // If the file is nil, that means the content represents
 // the remote gist.
 type SyncResponse struct {
-	Content string
-	File    *os.File
-	Error   error
+	GistContent string
+	File        *os.File
+	FileNewer   bool
+	Error       error
 }
 
-// Given a file handle and a gist ID returns a struct indicating whether
-// The file or the gist's content is newer, the actual content of both
-// the remote gist and the file and a possibl error.
+// Given a file handle and a gist ID returns a struct with the data needed
+// to sync.
 func Sync(accessToken string, fh *os.File, gistId string) SyncResponse {
 	stat, err := fh.Stat()
 	if err != nil {
-		return SyncResponse{Content: "", File: nil, Error: err}
+		return SyncResponse{GistContent: "", File: nil, FileNewer: false, Error: err}
 	}
 	fileUpdatedAt := stat.ModTime()
 	gist, resp, err := Get(accessToken, gistId)
 	if err != nil {
-		return SyncResponse{Content: "", File: nil, Error: err}
+		return SyncResponse{GistContent: "", File: nil, FileNewer: false, Error: err}
 	}
 	if resp.Response.StatusCode != 200 {
-		return SyncResponse{Content: "", File: nil, Error: fmt.Errorf("response from github was %d", resp.Response.StatusCode)}
+		return SyncResponse{GistContent: "", File: nil, Error: fmt.Errorf("response from github was %d", resp.Response.StatusCode)}
 	}
-	// log.Printf("file %s last modified: %v\n", fh.Name(), fileUpdatedAt)
-	// log.Printf("gist last modified: %v\n", gist.UpdatedAt)
-	// log.Printf("file was modified after gist? %t\n", fileUpdatedAt.After(*gist.UpdatedAt))
 	name := github.GistFilename(stat.Name())
-
-	var fileRef *os.File = nil
-	if fileUpdatedAt.After(*gist.UpdatedAt) {
-		// local file updated first.
-		fileRef = fh
-	}
-	return SyncResponse{File: fileRef, Content: string(*gist.Files[name].Content), Error: nil}
+	return SyncResponse{
+		File:        fh,
+		FileNewer:   fileUpdatedAt.After(*gist.UpdatedAt),
+		GistContent: string(*gist.Files[name].Content),
+		Error:       nil}
 }
