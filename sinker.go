@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/kahunacohen/sinker/conf"
@@ -23,7 +22,11 @@ func main() {
 	}
 	for i := range config.Gist.Files {
 		comparison := <-comparisonChan
-		fmt.Println(comparison.LocalModLast)
+		if comparison.File != nil {
+			log.Println("The file is newer")
+		} else {
+			log.Println("The gist is newer")
+		}
 		if i == len(config.Gist.Files)-1 {
 			close(comparisonChan)
 		}
