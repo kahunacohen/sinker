@@ -45,8 +45,8 @@ type SyncData struct {
 	Error       error
 }
 
-// Given a file handle and a gist ID returns a struct with the data needed
-// to sync.
+// Given an access token, file handle, gist ID and a channel writes to channel a struct
+// with the data needed to sync a local file and a gist.
 func GetSyncData(accessToken string, fh *os.File, gistId string, syncDataChan chan *SyncData) {
 	stat, err := fh.Stat()
 	if err != nil {
