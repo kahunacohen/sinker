@@ -28,9 +28,9 @@ func main() {
 		go gist.GetSyncData(config.Gist.AccessToken, fh, file.Id, syncDataChan)
 	}
 	for i := range config.Gist.Files {
-		comparison := <-syncDataChan
-		log.Printf("%s:", filepath.Base(comparison.File.Name()))
-		if comparison.FileNewer {
+		syncData := <-syncDataChan
+		log.Printf("%s:", filepath.Base(syncData.File.Name()))
+		if syncData.FileNewer {
 			log.Println("The FILE is newer")
 		} else {
 			log.Println("The GIST is newer")
