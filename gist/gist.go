@@ -38,7 +38,7 @@ func Get(accessToken string, id string) (*github.Gist, *github.Response, error) 
 // the local file or from the remote gist.
 // If the file is nil, that means the content represents
 // the remote gist.
-type SyncResponse struct {
+type SyncData struct {
 	GistContent string
 	File        *os.File
 	FileNewer   bool
@@ -47,23 +47,23 @@ type SyncResponse struct {
 
 // Given a file handle and a gist ID returns a struct with the data needed
 // to sync.
-func Sync(accessToken string, fh *os.File, gistId string) SyncResponse {
+func GetSyncData(accessToken string, fh *os.File, gistId string, syncDataChan chan *SyncData) {
 	stat, err := fh.Stat()
 	if err != nil {
-		return SyncResponse{GistContent: "", File: nil, FileNewer: false, Error: err}
+		syncDataChan <- &(SyncData{GistContent: "", File: nil, FileNewer: false, Error: err})
 	}
 	fileUpdatedAt := stat.ModTime()
 	gist, resp, err := Get(accessToken, gistId)
 	if err != nil {
-		return SyncResponse{GistContent: "", File: nil, FileNewer: false, Error: err}
+		syncDataChan <- &(SyncData{GistContent: "", File: nil, FileNewer: false, Error: err})
 	}
 	if resp.Response.StatusCode != 200 {
-		return SyncResponse{GistContent: "", File: nil, Error: fmt.Errorf("response from github was %d", resp.Response.StatusCode)}
+		syncDataChan <- &(SyncData{GistContent: "", File: nil, Error: fmt.Errorf("response from github was %d", resp.Response.StatusCode)})
 	}
 	name := github.GistFilename(stat.Name())
-	return SyncResponse{
+	syncDataChan <- &(SyncData{
 		File:        fh,
 		FileNewer:   fileUpdatedAt.After(*gist.UpdatedAt),
 		GistContent: string(*gist.Files[name].Content),
-		Error:       nil}
+		Error:       nil})
 }

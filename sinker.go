@@ -3,12 +3,12 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 
 	"path/filepath"
 
 	"github.com/kahunacohen/sinker/conf"
 
-	"github.com/kahunacohen/sinker/compare"
 	"github.com/kahunacohen/sinker/gist"
 )
 
@@ -19,12 +19,16 @@ func main() {
 		log.Fatal(err)
 	}
 
-	comparisonChan := make(chan *gist.SyncResponse, len(config.Gist.Files))
+	syncDataChan := make(chan *gist.SyncData, len(config.Gist.Files))
 	for _, file := range config.Gist.Files {
-		go compare.Compare(*config, file, comparisonChan)
+		fh, err := os.Open(file.Path)
+		if err != nil {
+			log.Fatalf("problem reading file: %s", err)
+		}
+		go gist.GetSyncData(config.Gist.AccessToken, fh, file.Id, syncDataChan)
 	}
 	for i := range config.Gist.Files {
-		comparison := <-comparisonChan
+		comparison := <-syncDataChan
 		log.Printf("%s:", filepath.Base(comparison.File.Name()))
 		if comparison.FileNewer {
 			log.Println("The FILE is newer")
@@ -33,7 +37,7 @@ func main() {
 		}
 		fmt.Println("")
 		if i == len(config.Gist.Files)-1 {
-			close(comparisonChan)
+			close(syncDataChan)
 		}
 	}
 }
