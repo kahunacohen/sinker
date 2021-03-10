@@ -27,8 +27,8 @@ func client(accessToken string) *github.Client {
 	return c
 }
 
-// Get a gist named given a personal access token and a gist ID.
-func Get(accessToken string, id string) (*github.Gist, *github.Response, error) {
+// GetGistData a gist named given a personal access token and a gist ID.
+func GetGistData(accessToken string, id string) (*github.Gist, *github.Response, error) {
 	return client(accessToken).Gists.Get(context.Background(), id)
 }
 
@@ -47,23 +47,25 @@ type SyncData struct {
 
 // Given an access token, file handle, gist ID and a channel writes to channel a struct
 // with the data needed to sync a local file and a gist.
-func GetSyncData(accessToken string, fh *os.File, gistId string, syncDataChan chan *SyncData) {
-	stat, err := fh.Stat()
+func GetSyncData(accessToken string, localFh *os.File, gistId string, syncDataChan chan *SyncData) {
+	stat, err := localFh.Stat()
 	if err != nil {
 		syncDataChan <- &(SyncData{GistContent: "", File: nil, FileNewer: false, Error: err})
 	}
 	fileUpdatedAt := stat.ModTime()
-	gist, resp, err := Get(accessToken, gistId)
+	gistData, resp, err := GetGistData(accessToken, gistId)
 	if err != nil {
 		syncDataChan <- &(SyncData{GistContent: "", File: nil, FileNewer: false, Error: err})
 	}
 	if resp.Response.StatusCode != 200 {
 		syncDataChan <- &(SyncData{GistContent: "", File: nil, Error: fmt.Errorf("response from github was %d", resp.Response.StatusCode)})
 	}
-	name := github.GistFilename(stat.Name())
+
+	// Get the filename from gist so we can index into the files map.
+	fileNameFromGist := github.GistFilename(stat.Name())
 	syncDataChan <- &(SyncData{
-		File:        fh,
-		FileNewer:   fileUpdatedAt.After(*gist.UpdatedAt),
-		GistContent: string(*gist.Files[name].Content),
+		File:        localFh,
+		FileNewer:   fileUpdatedAt.After(*gistData.UpdatedAt),
+		GistContent: string(*gistData.Files[fileNameFromGist].Content),
 		Error:       nil})
 }
