@@ -2,6 +2,7 @@ package gist
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	"golang.org/x/oauth2"
@@ -68,4 +69,17 @@ func GetSyncData(accessToken string, localFh *os.File, gistId string, syncDataCh
 		FileNewer:   fileUpdatedAt.After(*gistData.UpdatedAt),
 		GistContent: string(*gistData.Files[fileNameFromGist].Content),
 		Error:       nil})
+}
+
+func Sync(syncDataChan chan *SyncData) {
+	syncData := <-syncDataChan
+	if syncData.Error != nil {
+
+	}
+	if syncData.FileNewer {
+		log.Println("Write to gist")
+
+	} else {
+		log.Println("Write to file")
+	}
 }

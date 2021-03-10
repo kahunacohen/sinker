@@ -26,6 +26,7 @@ func main() {
 			log.Fatalf("problem reading file: %s", err)
 		}
 		go gist.GetSyncData(config.Gist.AccessToken, fh, file.Id, syncDataChan)
+
 	}
 	for i := range config.Gist.Files {
 		syncData := <-syncDataChan
@@ -40,4 +41,5 @@ func main() {
 			close(syncDataChan)
 		}
 	}
+
 }
