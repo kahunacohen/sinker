@@ -13,6 +13,8 @@ import (
 )
 
 func main() {
+	// Loop through each file in config.
+	// Get whether file or gist should be updated.
 
 	config, err := conf.Load("/Users/acohen/.sinkerrc.json")
 	if err != nil {
