@@ -5,8 +5,6 @@ import (
 	"log"
 	"os"
 
-	"path/filepath"
-
 	"github.com/kahunacohen/sinker/conf"
 
 	"github.com/kahunacohen/sinker/gist"
@@ -21,26 +19,23 @@ func main() {
 		log.Fatal(err)
 	}
 
-	syncDataChan := make(chan *gist.SyncData, len(config.Gist.Files))
+	syncDataChan := make(chan gist.SyncData)
+	syncChan := make(chan bool)
 	for _, file := range config.Gist.Files {
 		fh, err := os.Open(file.Path)
 		if err != nil {
 			log.Fatalf("problem reading file: %s", err)
 		}
 		go gist.GetSyncData(config.Gist.AccessToken, fh, file.Id, syncDataChan)
+		go gist.Sync(syncDataChan, syncChan)
 
 	}
 	for i := range config.Gist.Files {
-		syncData := <-syncDataChan
-		log.Printf("%s:", filepath.Base(syncData.File.Name()))
-		if syncData.FileNewer {
-			log.Println("The FILE is newer")
-		} else {
-			log.Println("The GIST is newer")
-		}
-		fmt.Println("")
+		fmt.Println(<-syncChan)
+		// log.Printf("%s:", filepath.Base(syncData.File.Name()))
+
 		if i == len(config.Gist.Files)-1 {
-			close(syncDataChan)
+			close(syncChan)
 		}
 	}
 
