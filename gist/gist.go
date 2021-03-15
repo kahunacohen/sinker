@@ -2,6 +2,7 @@ package gist
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	"golang.org/x/oauth2"
@@ -72,5 +73,15 @@ func GetSyncData(accessToken string, localFh *os.File, gistId string, syncDataCh
 
 func Sync(syncDataChan <-chan SyncData, syncChan chan<- bool) {
 	data := <-syncDataChan
+	if data.FileNewer {
+		//log.Println("the file is newer, push file contents to gist")
+	} else {
+		log.Printf("the gist is newer, overwrite file %s", data.File.Name())
+		f := *data.File
+		_, err := f.WriteString(data.GistContent)
+		if err != nil {
+			fmt.Println(err)
+		}
+	}
 	syncChan <- data.FileNewer
 }

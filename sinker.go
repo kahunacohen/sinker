@@ -30,6 +30,7 @@ func main() {
 		go gist.Sync(syncDataChan, syncChan)
 
 	}
+
 	for i := range config.Gist.Files {
 		fmt.Println(<-syncChan)
 		// log.Printf("%s:", filepath.Base(syncData.File.Name()))
