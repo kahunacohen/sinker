@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
 
 	"github.com/kahunacohen/sinker/conf"
 
@@ -21,12 +20,8 @@ func main() {
 
 	syncDataChan := make(chan gist.SyncData)
 	syncChan := make(chan bool)
-	for _, file := range config.Gist.Files {
-		fh, err := os.Open(file.Path)
-		if err != nil {
-			log.Fatalf("problem reading file: %s", err)
-		}
-		go gist.GetSyncData(config.Gist.AccessToken, fh, file.Id, syncDataChan)
+	for _, gistFile := range config.Gist.Files {
+		go gist.GetSyncData(config.Gist.AccessToken, gistFile, syncDataChan)
 		go gist.Sync(syncDataChan, syncChan)
 
 	}

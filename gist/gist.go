@@ -2,14 +2,17 @@ package gist
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
+	"time"
 
 	"golang.org/x/oauth2"
 
 	"context"
 
 	"github.com/google/go-github/v33/github"
+	"github.com/kahunacohen/sinker/conf"
 )
 
 var c *github.Client = nil
@@ -40,48 +43,103 @@ func GetGistData(accessToken string, id string) (*github.Gist, *github.Response,
 // If the file is nil, that means the content represents
 // the remote gist.
 type SyncData struct {
-	GistContent string
-	File        *os.File
-	FileNewer   bool
+	GistContent []byte
+	FileContent []byte
+	FilePath    string
+	FileLastMod *time.Time
+	GistLastMod *time.Time
 	Error       error
 }
 
 // Given an access token, file handle, gist ID and a channel writes to channel a struct
 // with the data needed to sync a local file and a gist.
-func GetSyncData(accessToken string, localFh *os.File, gistId string, syncDataChan chan<- SyncData) {
-	stat, err := localFh.Stat()
+func GetSyncData(accessToken string, gistFile conf.File, syncDataChan chan<- SyncData) {
+	fh, err := os.Open(gistFile.Path)
 	if err != nil {
-		syncDataChan <- SyncData{GistContent: "", File: nil, FileNewer: false, Error: err}
+		syncDataChan <- SyncData{
+			GistContent: nil,
+			FileContent: nil,
+			FilePath:    gistFile.Path,
+			FileLastMod: nil,
+			GistLastMod: nil,
+			Error:       err}
+		return
 	}
-	fileUpdatedAt := stat.ModTime()
-	gistData, resp, err := GetGistData(accessToken, gistId)
+	defer fh.Close()
+	stat, err := fh.Stat()
 	if err != nil {
-		syncDataChan <- SyncData{GistContent: "", File: nil, FileNewer: false, Error: err}
+		syncDataChan <- SyncData{
+			GistContent: nil,
+			FileContent: nil,
+			FilePath:    gistFile.Path,
+			FileLastMod: nil,
+			GistLastMod: nil,
+			Error:       err}
+		return
+	}
+	fileLastMod := stat.ModTime()
+	gistData, resp, err := GetGistData(accessToken, gistFile.Id)
+	if err != nil {
+		syncDataChan <- SyncData{
+			GistContent: nil,
+			FileContent: nil,
+			FilePath:    gistFile.Path,
+			FileLastMod: &fileLastMod,
+			GistLastMod: nil,
+			Error:       err}
+		return
 	}
 	if resp.Response.StatusCode != 200 {
-		syncDataChan <- SyncData{GistContent: "", File: nil, Error: fmt.Errorf("response from github was %d", resp.Response.StatusCode)}
+		syncDataChan <- SyncData{
+			GistContent: nil,
+			FileContent: nil,
+			FilePath:    gistFile.Path,
+			FileLastMod: &fileLastMod,
+			GistLastMod: nil,
+			Error:       fmt.Errorf("response from github was %d")}
 	}
 
 	// Get the filename from gist so we can index into the files map.
 	fileNameFromGist := github.GistFilename(stat.Name())
+	bytes, err := ioutil.ReadFile(gistFile.Path)
+	if err != nil {
+		syncDataChan <- SyncData{
+			GistContent: nil,
+			FileContent: nil,
+			FilePath:    gistFile.Path,
+			FileLastMod: &fileLastMod,
+			GistLastMod: nil,
+			Error:       err}
+		return
+	}
 	syncDataChan <- SyncData{
-		File:        localFh,
-		FileNewer:   fileUpdatedAt.After(*gistData.UpdatedAt),
-		GistContent: string(*gistData.Files[fileNameFromGist].Content),
+		GistContent: []byte(*gistData.Files[fileNameFromGist].Content),
+		FileContent: bytes,
+		FilePath:    gistFile.Path,
+		FileLastMod: &fileLastMod,
+		GistLastMod: gistData.UpdatedAt,
 		Error:       nil}
 }
 
 func Sync(syncDataChan <-chan SyncData, syncChan chan<- bool) {
 	data := <-syncDataChan
-	if data.FileNewer {
-		//log.Println("the file is newer, push file contents to gist")
+	log.Printf("syncing %s", data.FilePath)
+
+	if string(data.GistContent) == string(data.FileContent) {
+		log.Printf("content is equal for file and gist--Do nothing.")
+		syncChan <- true
+		return
+	}
+	if data.FileLastMod.After(*data.GistLastMod) {
+		log.Println("the file is newer, push file contents to gist")
 	} else {
-		log.Printf("the gist is newer, overwrite file %s", data.File.Name())
-		f := *data.File
-		_, err := f.WriteString(data.GistContent)
+		log.Printf("the gist is newer, overwrite file %s", data.FilePath)
+		err := ioutil.WriteFile(data.FilePath, data.GistContent, 0644)
 		if err != nil {
 			fmt.Println(err)
+			syncChan <- true
+			return
 		}
 	}
-	syncChan <- data.FileNewer
+	syncChan <- true
 }
