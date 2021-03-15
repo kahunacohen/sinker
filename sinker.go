@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/kahunacohen/sinker/conf"
@@ -27,9 +26,7 @@ func main() {
 	}
 
 	for i := range config.Gist.Files {
-		fmt.Println(<-syncChan)
-		// log.Printf("%s:", filepath.Base(syncData.File.Name()))
-
+		<-syncChan
 		if i == len(config.Gist.Files)-1 {
 			close(syncChan)
 		}

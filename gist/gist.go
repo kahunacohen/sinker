@@ -20,7 +20,6 @@ var c *github.Client = nil
 // Wraps the github golang sdk authorized client.
 func client(accessToken string) *github.Client {
 	if c == nil {
-		// log.Println("create auth client")
 		ctx := context.Background()
 		ts := oauth2.StaticTokenSource(
 			&oauth2.Token{AccessToken: accessToken},
@@ -43,11 +42,13 @@ func UpdateGist(accessToken string, gist *github.Gist, gistFilename github.GistF
 	// t.name = "Mark"
 	// users[5] = t
 
-	// x := gist.Files[gistFilename]
-	// ct := string(content)
-	// x.Content = &ct
-	// gist.Files[gistFilename] = x
-	return client(accessToken).Gists.Edit(context.Background(), string(content), gist)
+	x := gist.Files[gistFilename]
+
+	ct := string(content)
+	x.Content = &ct
+	gist.Files[gistFilename] = x
+	fmt.Println(*gist.ID)
+	return client(accessToken).Gists.Edit(context.Background(), *gist.ID, gist)
 }
 
 // A response from syncing to github.
@@ -147,26 +148,27 @@ func GetSyncData(accessToken string, gistFile conf.File, syncDataChan chan<- Syn
 func Sync(syncDataChan <-chan SyncData, syncChan chan<- bool) {
 	data := <-syncDataChan
 	gist := *data.Gist
-	log.Printf("syncing %s", data.FilePath)
 	gistContent := gist.Files[data.GistFilename].Content
+	log.Printf("sync %s", data.FilePath)
 	if *gistContent == string(data.FileContent) {
-		log.Printf("content is equal for file and gist--Do nothing.")
+		log.Printf("content is equal for file and gist.")
 		syncChan <- true
 		return
 	}
-	if data.FileLastMod.After(gist.UpdatedAt) {
+	if data.FileLastMod.After(*gist.UpdatedAt) {
 		log.Println("the file is newer, push file contents to gist")
-		_, resp, err := UpdateGist(data.AccessToken, gist, data.GistFilename, data.FileContent)
+		_, _, err := UpdateGist(data.AccessToken, &gist, data.GistFilename, data.FileContent)
 		if err != nil {
-			fmt.Println(err)
+			fmt.Println("ERROR")
 		}
-		fmt.Println(resp.StatusCode)
 
 	} else {
 		log.Printf("the gist is newer, overwrite file %s", data.FilePath)
 		gistContent := []byte(*gist.Files[data.GistFilename].Content)
 		err := ioutil.WriteFile(data.FilePath, gistContent, 0644)
 		if err != nil {
+			fmt.Println("ERROR")
+
 			fmt.Println(err)
 			syncChan <- true
 			return
