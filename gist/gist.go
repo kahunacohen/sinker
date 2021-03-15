@@ -35,10 +35,19 @@ func client(accessToken string) *github.Client {
 func GetGistData(accessToken string, id string) (*github.Gist, *github.Response, error) {
 	return client(accessToken).Gists.Get(context.Background(), id)
 }
-func UpdateGist(accessToken string, gist *github.Gist, fileName string, content []byte) (*github.Response, error) {
+
+// Updates a gist
+func UpdateGist(accessToken string, gist *github.Gist, gistFilename github.GistFilename, content []byte) (*github.Gist, *github.Response, error) {
 	//GistContent: []byte(*gist.Files[fileNameFromGist].Content),
-	gist.Files[fileName] = content
-	return client(accessToken).Gists.Edit(context.Background(), gist)
+	// t := users[5]
+	// t.name = "Mark"
+	// users[5] = t
+
+	// x := gist.Files[gistFilename]
+	// ct := string(content)
+	// x.Content = &ct
+	// gist.Files[gistFilename] = x
+	return client(accessToken).Gists.Edit(context.Background(), string(content), gist)
 }
 
 // A response from syncing to github.
@@ -48,12 +57,12 @@ func UpdateGist(accessToken string, gist *github.Gist, fileName string, content 
 // If the file is nil, that means the content represents
 // the remote gist.
 type SyncData struct {
-	AccessToken string
-	Gist        *github.Gist
-	FileName    string
-	FileContent []byte
-	FilePath    string
-	FileLastMod *time.Time
+	AccessToken  string
+	Gist         *github.Gist
+	GistFilename github.GistFilename
+	FileContent  []byte
+	FilePath     string
+	FileLastMod  *time.Time
 
 	Error error
 }
@@ -61,53 +70,54 @@ type SyncData struct {
 // Given an access token, file handle, gist ID and a channel writes to channel a struct
 // with the data needed to sync a local file and a gist.
 func GetSyncData(accessToken string, gistFile conf.File, syncDataChan chan<- SyncData) {
+	////fileNameFromGist := github.GistFilename(stat.Name())//fileNameFromGist := github.GistFilename(stat.Name())
 	fh, err := os.Open(gistFile.Path)
 	if err != nil {
 		syncDataChan <- SyncData{
-			AccessToken: accessToken,
-			Gist:        nil,
-			FileName:    "",
-			FileContent: nil,
-			FilePath:    gistFile.Path,
-			FileLastMod: nil,
-			Error:       err}
+			AccessToken:  accessToken,
+			Gist:         nil,
+			GistFilename: "",
+			FileContent:  nil,
+			FilePath:     gistFile.Path,
+			FileLastMod:  nil,
+			Error:        err}
 		return
 	}
 	defer fh.Close()
 	stat, err := fh.Stat()
 	if err != nil {
 		syncDataChan <- SyncData{
-			AccessToken: accessToken,
-			Gist:        nil,
-			FileName:    "",
-			FileContent: nil,
-			FilePath:    gistFile.Path,
-			FileLastMod: nil,
-			Error:       err}
+			AccessToken:  accessToken,
+			Gist:         nil,
+			GistFilename: "",
+			FileContent:  nil,
+			FilePath:     gistFile.Path,
+			FileLastMod:  nil,
+			Error:        err}
 		return
 	}
 	fileLastMod := stat.ModTime()
 	gist, resp, err := GetGistData(accessToken, gistFile.Id)
 	if err != nil {
 		syncDataChan <- SyncData{
-			AccessToken: accessToken,
-			Gist:        nil,
-			FileName:    "",
-			FileContent: nil,
-			FilePath:    gistFile.Path,
-			FileLastMod: &fileLastMod,
-			Error:       err}
+			AccessToken:  accessToken,
+			Gist:         nil,
+			GistFilename: "",
+			FileContent:  nil,
+			FilePath:     gistFile.Path,
+			FileLastMod:  &fileLastMod,
+			Error:        err}
 		return
 	}
 	if resp.Response.StatusCode != 200 {
 		syncDataChan <- SyncData{
-			AccessToken: accessToken,
-			Gist:        nil,
-			FileName:    "",
-			FileContent: nil,
-			FilePath:    gistFile.Path,
-			FileLastMod: &fileLastMod,
-			Error:       fmt.Errorf("response from github was %d")}
+			AccessToken:  accessToken,
+			Gist:         nil,
+			GistFilename: "",
+			FileContent:  nil,
+			FilePath:     gistFile.Path,
+			FileLastMod:  &fileLastMod,
+			Error:        fmt.Errorf("response from github was %d")}
 	}
 
 	// Get the filename from gist so we can index into the files map.
@@ -115,46 +125,47 @@ func GetSyncData(accessToken string, gistFile conf.File, syncDataChan chan<- Syn
 	fileContent, err := ioutil.ReadFile(gistFile.Path)
 	if err != nil {
 		syncDataChan <- SyncData{
-			AccessToken: accessToken,
-			Gist:        nil,
-			FileName:    "",
-			FileContent: nil,
-			FilePath:    gistFile.Path,
-			FileLastMod: &fileLastMod,
-			Error:       err}
+			AccessToken:  accessToken,
+			Gist:         nil,
+			GistFilename: "",
+			FileContent:  nil,
+			FilePath:     gistFile.Path,
+			FileLastMod:  &fileLastMod,
+			Error:        err}
 		return
 	}
-
 	syncDataChan <- SyncData{
-		AccessToken: accessToken,
-		Gist:        gist,
-		FileName:    stat.Name(),
-		//GistContent: []byte(*gist.Files[fileNameFromGist].Content),
-		FileContent: fileContent,
-		FilePath:    gistFile.Path,
-		FileLastMod: &fileLastMod,
-		Error:       nil}
+		AccessToken:  accessToken,
+		Gist:         gist,
+		GistFilename: github.GistFilename(stat.Name()),
+		FileContent:  fileContent,
+		FilePath:     gistFile.Path,
+		FileLastMod:  &fileLastMod,
+		Error:        nil}
 }
 
 func Sync(syncDataChan <-chan SyncData, syncChan chan<- bool) {
 	data := <-syncDataChan
 	gist := *data.Gist
 	log.Printf("syncing %s", data.FilePath)
-	gistContent := []byte(gist.Files[data.FileName].Content)
-	if string(gistContent) == string(data.FileContent) {
+	gistContent := gist.Files[data.GistFilename].Content
+	if *gistContent == string(data.FileContent) {
 		log.Printf("content is equal for file and gist--Do nothing.")
 		syncChan <- true
 		return
 	}
 	if data.FileLastMod.After(gist.UpdatedAt) {
 		log.Println("the file is newer, push file contents to gist")
-		_, _, err := UpdateGist(data.AccessToken, gist, data.FileName, data.FileContent)
+		_, resp, err := UpdateGist(data.AccessToken, gist, data.GistFilename, data.FileContent)
 		if err != nil {
 			fmt.Println(err)
 		}
+		fmt.Println(resp.StatusCode)
+
 	} else {
 		log.Printf("the gist is newer, overwrite file %s", data.FilePath)
-		err := ioutil.WriteFile(data.FilePath, data.GistContent, 0644)
+		gistContent := []byte(*gist.Files[data.GistFilename].Content)
+		err := ioutil.WriteFile(data.FilePath, gistContent, 0644)
 		if err != nil {
 			fmt.Println(err)
 			syncChan <- true
