@@ -35,8 +35,10 @@ func client(accessToken string) *github.Client {
 func GetGistData(accessToken string, id string) (*github.Gist, *github.Response, error) {
 	return client(accessToken).Gists.Get(context.Background(), id)
 }
-func UpdateGist(accessToken string, id string, content []byte) (*github.Gist, *github.Response, error) {
-	return client(accessToken).Gists.Edit(context.Background(), id, content)
+func UpdateGist(accessToken string, gist *github.Gist, fileName string, content []byte) (*github.Response, error) {
+	//GistContent: []byte(*gist.Files[fileNameFromGist].Content),
+	gist.Files[fileName] = content
+	return client(accessToken).Gists.Edit(context.Background(), gist)
 }
 
 // A response from syncing to github.
@@ -47,13 +49,13 @@ func UpdateGist(accessToken string, id string, content []byte) (*github.Gist, *g
 // the remote gist.
 type SyncData struct {
 	AccessToken string
-	GistContent []byte
+	Gist        *github.Gist
+	FileName    string
 	FileContent []byte
 	FilePath    string
-	GistId      string
 	FileLastMod *time.Time
-	GistLastMod *time.Time
-	Error       error
+
+	Error error
 }
 
 // Given an access token, file handle, gist ID and a channel writes to channel a struct
@@ -63,12 +65,11 @@ func GetSyncData(accessToken string, gistFile conf.File, syncDataChan chan<- Syn
 	if err != nil {
 		syncDataChan <- SyncData{
 			AccessToken: accessToken,
-			GistContent: nil,
+			Gist:        nil,
+			FileName:    "",
 			FileContent: nil,
-			GistId:      gistFile.Id,
 			FilePath:    gistFile.Path,
 			FileLastMod: nil,
-			GistLastMod: nil,
 			Error:       err}
 		return
 	}
@@ -77,79 +78,77 @@ func GetSyncData(accessToken string, gistFile conf.File, syncDataChan chan<- Syn
 	if err != nil {
 		syncDataChan <- SyncData{
 			AccessToken: accessToken,
-			GistContent: nil,
+			Gist:        nil,
+			FileName:    "",
 			FileContent: nil,
-			GistId:      gistFile.Id,
 			FilePath:    gistFile.Path,
 			FileLastMod: nil,
-			GistLastMod: nil,
 			Error:       err}
 		return
 	}
 	fileLastMod := stat.ModTime()
-	gistData, resp, err := GetGistData(accessToken, gistFile.Id)
+	gist, resp, err := GetGistData(accessToken, gistFile.Id)
 	if err != nil {
 		syncDataChan <- SyncData{
 			AccessToken: accessToken,
-			GistContent: nil,
+			Gist:        nil,
+			FileName:    "",
 			FileContent: nil,
-			GistId:      gistFile.Id,
 			FilePath:    gistFile.Path,
 			FileLastMod: &fileLastMod,
-			GistLastMod: nil,
 			Error:       err}
 		return
 	}
 	if resp.Response.StatusCode != 200 {
 		syncDataChan <- SyncData{
 			AccessToken: accessToken,
-			GistContent: nil,
+			Gist:        nil,
+			FileName:    "",
 			FileContent: nil,
-			GistId:      gistFile.Id,
 			FilePath:    gistFile.Path,
 			FileLastMod: &fileLastMod,
-			GistLastMod: nil,
 			Error:       fmt.Errorf("response from github was %d")}
 	}
 
 	// Get the filename from gist so we can index into the files map.
-	fileNameFromGist := github.GistFilename(stat.Name())
-	bytes, err := ioutil.ReadFile(gistFile.Path)
+	//fileNameFromGist := github.GistFilename(stat.Name())
+	fileContent, err := ioutil.ReadFile(gistFile.Path)
 	if err != nil {
 		syncDataChan <- SyncData{
 			AccessToken: accessToken,
-			GistContent: nil,
+			Gist:        nil,
+			FileName:    "",
 			FileContent: nil,
-			GistId:      gistFile.Id,
 			FilePath:    gistFile.Path,
 			FileLastMod: &fileLastMod,
-			GistLastMod: nil,
 			Error:       err}
 		return
 	}
+
 	syncDataChan <- SyncData{
 		AccessToken: accessToken,
-		GistContent: []byte(*gistData.Files[fileNameFromGist].Content),
-		FileContent: bytes,
-		GistId:      gistFile.Id,
+		Gist:        gist,
+		FileName:    stat.Name(),
+		//GistContent: []byte(*gist.Files[fileNameFromGist].Content),
+		FileContent: fileContent,
 		FilePath:    gistFile.Path,
 		FileLastMod: &fileLastMod,
-		GistLastMod: gistData.UpdatedAt,
 		Error:       nil}
 }
 
 func Sync(syncDataChan <-chan SyncData, syncChan chan<- bool) {
 	data := <-syncDataChan
+	gist := *data.Gist
 	log.Printf("syncing %s", data.FilePath)
-
-	if string(data.GistContent) == string(data.FileContent) {
+	gistContent := []byte(gist.Files[data.FileName].Content)
+	if string(gistContent) == string(data.FileContent) {
 		log.Printf("content is equal for file and gist--Do nothing.")
 		syncChan <- true
 		return
 	}
-	if data.FileLastMod.After(*data.GistLastMod) {
+	if data.FileLastMod.After(gist.UpdatedAt) {
 		log.Println("the file is newer, push file contents to gist")
-		_, _, err := UpdateGist(data.AccessToken, data.GistId, data.FileContent)
+		_, _, err := UpdateGist(data.AccessToken, gist, data.FileName, data.FileContent)
 		if err != nil {
 			fmt.Println(err)
 		}
