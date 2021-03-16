@@ -3,7 +3,6 @@ package gist
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"time"
 
@@ -52,8 +51,14 @@ type SyncData struct {
 	FileContent  []byte
 	FilePath     string
 	FileLastMod  *time.Time
+	Error        error
+}
 
-	Error error
+// SyncResult represents the result of syncing a local file and a remote Gist.
+type SyncResult struct {
+	FileOverwritesGist bool
+	GistOverwritesFile bool
+	Error              error
 }
 
 // GetSyncData gets the SyncData needed for syncing a remote gist and an associated local file.
@@ -133,41 +138,30 @@ func GetSyncData(gistFile conf.File, syncDataChan chan<- SyncData, config *conf.
 
 // Sync takes care of syncing the local file with the remote gist given
 // SyncData.
-func Sync(syncDataChan <-chan SyncData, syncChan chan<- bool, config *conf.Conf) {
+func Sync(syncDataChan <-chan SyncData, syncResultChan chan<- SyncResult, config *conf.Conf) {
 	data := <-syncDataChan
 	gist := *data.Gist
 	gistContent := gist.Files[data.GistFilename].Content
-	verbose := config.Opts.Verbose
-	if verbose {
-		log.Printf("syncing %s", data.FilePath)
-	}
 	if *gistContent == string(data.FileContent) {
-		if verbose {
-			log.Printf("content is equal for file and gist.")
-		}
-		syncChan <- true
+		syncResultChan <- SyncResult{Error: nil, FileOverwritesGist: false, GistOverwritesFile: false}
 		return
 	}
 	if data.FileLastMod.After(*gist.UpdatedAt) {
-		if verbose {
-			log.Println("the file is newer, push file contents to gist")
-		}
 		_, _, err := updateGist(data.AccessToken, &gist, data.GistFilename, data.FileContent)
 		if err != nil {
-			fmt.Println("ERROR")
+			syncResultChan <- SyncResult{Error: err, FileOverwritesGist: false, GistOverwritesFile: false}
+			return
 		}
+		// TODO check for response.
+		syncResultChan <- SyncResult{Error: nil, FileOverwritesGist: true, GistOverwritesFile: false}
 
 	} else {
-		if verbose {
-			log.Printf("the gist is newer, overwrite file %s", data.FilePath)
-		}
 		gistContent := []byte(*gist.Files[data.GistFilename].Content)
 		err := ioutil.WriteFile(data.FilePath, gistContent, 0644)
 		if err != nil {
-			fmt.Println(err)
-			syncChan <- true
+			syncResultChan <- SyncResult{Error: err, FileOverwritesGist: false, GistOverwritesFile: false}
 			return
 		}
+		syncResultChan <- SyncResult{Error: nil, FileOverwritesGist: false, GistOverwritesFile: true}
 	}
-	syncChan <- true
 }

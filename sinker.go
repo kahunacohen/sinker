@@ -25,23 +25,31 @@ func getOpts() conf.Opts {
 func main() {
 	opts := getOpts()
 	config, err := conf.Load("/Users/acohen/.sinkerrc.json", opts)
-
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	syncDataChan := make(chan gist.SyncData)
-	syncChan := make(chan bool)
+	syncResultChan := make(chan gist.SyncResult)
 	for _, gistFile := range config.Gist.Files {
 		go gist.GetSyncData(gistFile, syncDataChan, config)
-		go gist.Sync(syncDataChan, syncChan, config)
-
+		go gist.Sync(syncDataChan, syncResultChan, config)
 	}
-
 	for i := range config.Gist.Files {
-		<-syncChan
+		result := <-syncResultChan
+		if opts.Verbose {
+			if result.Error != nil {
+				log.Fatalf("sinker exited. Error: %v", result.Error)
+			}
+			if result.FileOverwritesGist {
+				log.Println("file is newer, overwrote gist")
+			} else if result.GistOverwritesFile {
+				log.Println("gist newer, overwrote file")
+			} else {
+				log.Println("file and gist have the same content...noop")
+			}
+		}
 		if i == len(config.Gist.Files)-1 {
-			close(syncChan)
+			close(syncResultChan)
 		}
 	}
 
