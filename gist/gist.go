@@ -137,6 +137,7 @@ func Sync(syncDataChan <-chan SyncData, syncChan chan<- bool) {
 	data := <-syncDataChan
 	gist := *data.Gist
 	gistContent := gist.Files[data.GistFilename].Content
+	log.Printf("syncing %s", data.FilePath)
 	if *gistContent == string(data.FileContent) {
 		log.Printf("content is equal for file and gist.")
 		syncChan <- true
