@@ -57,11 +57,11 @@ type SyncData struct {
 }
 
 // GetSyncData gets the SyncData needed for syncing a remote gist and an associated local file.
-func GetSyncData(accessToken string, gistFile conf.File, syncDataChan chan<- SyncData) {
+func GetSyncData(gistFile conf.File, syncDataChan chan<- SyncData, config *conf.Conf) {
 	fh, err := os.Open(gistFile.Path)
 	if err != nil {
 		syncDataChan <- SyncData{
-			AccessToken:  accessToken,
+			AccessToken:  config.Gist.AccessToken,
 			Gist:         nil,
 			GistFilename: "",
 			FileContent:  nil,
@@ -74,7 +74,7 @@ func GetSyncData(accessToken string, gistFile conf.File, syncDataChan chan<- Syn
 	stat, err := fh.Stat()
 	if err != nil {
 		syncDataChan <- SyncData{
-			AccessToken:  accessToken,
+			AccessToken:  config.Gist.AccessToken,
 			Gist:         nil,
 			GistFilename: "",
 			FileContent:  nil,
@@ -84,10 +84,10 @@ func GetSyncData(accessToken string, gistFile conf.File, syncDataChan chan<- Syn
 		return
 	}
 	fileLastMod := stat.ModTime()
-	gist, resp, err := getGistData(accessToken, gistFile.Id)
+	gist, resp, err := getGistData(config.Gist.AccessToken, gistFile.Id)
 	if err != nil {
 		syncDataChan <- SyncData{
-			AccessToken:  accessToken,
+			AccessToken:  config.Gist.AccessToken,
 			Gist:         nil,
 			GistFilename: "",
 			FileContent:  nil,
@@ -98,7 +98,7 @@ func GetSyncData(accessToken string, gistFile conf.File, syncDataChan chan<- Syn
 	}
 	if resp.Response.StatusCode != 200 {
 		syncDataChan <- SyncData{
-			AccessToken:  accessToken,
+			AccessToken:  config.Gist.AccessToken,
 			Gist:         nil,
 			GistFilename: "",
 			FileContent:  nil,
@@ -112,7 +112,7 @@ func GetSyncData(accessToken string, gistFile conf.File, syncDataChan chan<- Syn
 	fileContent, err := ioutil.ReadFile(gistFile.Path)
 	if err != nil {
 		syncDataChan <- SyncData{
-			AccessToken:  accessToken,
+			AccessToken:  config.Gist.AccessToken,
 			Gist:         nil,
 			GistFilename: "",
 			FileContent:  nil,
@@ -122,7 +122,7 @@ func GetSyncData(accessToken string, gistFile conf.File, syncDataChan chan<- Syn
 		return
 	}
 	syncDataChan <- SyncData{
-		AccessToken:  accessToken,
+		AccessToken:  config.Gist.AccessToken,
 		Gist:         gist,
 		GistFilename: github.GistFilename(stat.Name()),
 		FileContent:  fileContent,
@@ -133,25 +133,34 @@ func GetSyncData(accessToken string, gistFile conf.File, syncDataChan chan<- Syn
 
 // Sync takes care of syncing the local file with the remote gist given
 // SyncData.
-func Sync(syncDataChan <-chan SyncData, syncChan chan<- bool) {
+func Sync(syncDataChan <-chan SyncData, syncChan chan<- bool, config *conf.Conf) {
 	data := <-syncDataChan
 	gist := *data.Gist
 	gistContent := gist.Files[data.GistFilename].Content
-	log.Printf("syncing %s", data.FilePath)
+	verbose := config.Opts.Verbose
+	if verbose {
+		log.Printf("syncing %s", data.FilePath)
+	}
 	if *gistContent == string(data.FileContent) {
-		log.Printf("content is equal for file and gist.")
+		if verbose {
+			log.Printf("content is equal for file and gist.")
+		}
 		syncChan <- true
 		return
 	}
 	if data.FileLastMod.After(*gist.UpdatedAt) {
-		log.Println("the file is newer, push file contents to gist")
+		if verbose {
+			log.Println("the file is newer, push file contents to gist")
+		}
 		_, _, err := updateGist(data.AccessToken, &gist, data.GistFilename, data.FileContent)
 		if err != nil {
 			fmt.Println("ERROR")
 		}
 
 	} else {
-		log.Printf("the gist is newer, overwrite file %s", data.FilePath)
+		if verbose {
+			log.Printf("the gist is newer, overwrite file %s", data.FilePath)
+		}
 		gistContent := []byte(*gist.Files[data.GistFilename].Content)
 		err := ioutil.WriteFile(data.FilePath, gistContent, 0644)
 		if err != nil {

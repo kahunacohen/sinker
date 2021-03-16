@@ -5,6 +5,10 @@ import (
 	"io/ioutil"
 )
 
+type Opts struct {
+	Verbose bool
+}
+
 type File struct {
 	Path string
 	Id   string
@@ -16,11 +20,12 @@ type Gist struct {
 
 type Conf struct {
 	Gist Gist
+	Opts Opts
 }
 
 // Attempts to read  the .sinkerrc.json file in the user's
 // home directory
-func ReadSinkerRc(dir string) ([]byte, error) {
+func readSinkerRc(dir string) ([]byte, error) {
 	data, err := ioutil.ReadFile(dir)
 	if err != nil {
 		return nil, err
@@ -29,21 +34,24 @@ func ReadSinkerRc(dir string) ([]byte, error) {
 }
 
 // Parses the json from the config.
-func ParseJsonConfg(data []byte) (Conf, error) {
+func parseJsonConfig(data []byte) (Conf, error) {
 	var conf Conf
 	err := json.Unmarshal(data, &conf)
 	return conf, err
 }
 
-// Gets the configuration data as a Conf struct.
+// Load gets the configuration data as a Conf struct.
 // The caller can directly reference fields on the struct
 // because golang allows (*P).f to be accessed as P.f.
-func Load(dir string) (*Conf, error) {
-	data, err := ReadSinkerRc(dir)
+// The opts map is from the command line flags to be merged into the
+// config.
+func Load(dir string, opts Opts) (*Conf, error) {
+	data, err := readSinkerRc(dir)
 	if err != nil {
 		return nil, err
 	}
-	conf, err := ParseJsonConfg(data)
+	conf, err := parseJsonConfig(data)
+	conf.Opts = opts
 	if err != nil {
 		return nil, err
 	}

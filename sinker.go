@@ -11,8 +11,8 @@ import (
 	"github.com/kahunacohen/sinker/gist"
 )
 
-func getOpts() map[string]interface{} {
-	ret := make(map[string]interface{})
+func getOpts() conf.Opts {
+
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "sinker syncs a set of local files to associated, remote gists, given a .sinker.json config file. Usage of %s:\n", os.Args[0])
 		flag.PrintDefaults()
@@ -20,13 +20,12 @@ func getOpts() map[string]interface{} {
 	var verboseVar bool
 	flag.BoolVar(&verboseVar, "verbose", false, "print log messages.")
 	flag.Parse()
-	ret["verbose"] = verboseVar
-	return ret
+	return conf.Opts{Verbose: verboseVar}
 }
 func main() {
 	opts := getOpts()
-	fmt.Println(opts)
-	config, err := conf.Load("/Users/acohen/.sinkerrc.json")
+	config, err := conf.Load("/Users/acohen/.sinkerrc.json", opts)
+
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -34,8 +33,8 @@ func main() {
 	syncDataChan := make(chan gist.SyncData)
 	syncChan := make(chan bool)
 	for _, gistFile := range config.Gist.Files {
-		go gist.GetSyncData(config.Gist.AccessToken, gistFile, syncDataChan)
-		go gist.Sync(syncDataChan, syncChan)
+		go gist.GetSyncData(gistFile, syncDataChan, config)
+		go gist.Sync(syncDataChan, syncChan, config)
 
 	}
 
