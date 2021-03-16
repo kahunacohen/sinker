@@ -15,48 +15,36 @@ import (
 	"github.com/kahunacohen/sinker/conf"
 )
 
-var c *github.Client = nil
-
 // Wraps the github golang sdk authorized client.
 func client(accessToken string) *github.Client {
-	if c == nil {
-		ctx := context.Background()
-		ts := oauth2.StaticTokenSource(
-			&oauth2.Token{AccessToken: accessToken},
-		)
-		tc := oauth2.NewClient(ctx, ts)
-		c = github.NewClient(tc)
-	}
-	return c
+	ctx := context.Background()
+	ts := oauth2.StaticTokenSource(
+		&oauth2.Token{AccessToken: accessToken},
+	)
+	tc := oauth2.NewClient(ctx, ts)
+	return github.NewClient(tc)
+
 }
 
-// GetGistData a gist named given a personal access token and a gist ID.
-func GetGistData(accessToken string, id string) (*github.Gist, *github.Response, error) {
+func getGistData(accessToken string, id string) (*github.Gist, *github.Response, error) {
 	return client(accessToken).Gists.Get(context.Background(), id)
 }
 
-// Updates a gist
-func UpdateGist(accessToken string, gist *github.Gist, gistFilename github.GistFilename, content []byte) (*github.Gist, *github.Response, error) {
-	//GistContent: []byte(*gist.Files[fileNameFromGist].Content),
-	// t := users[5]
-	// t.name = "Mark"
-	// users[5] = t
-
+func updateGist(accessToken string, gist *github.Gist, gistFilename github.GistFilename, content []byte) (*github.Gist, *github.Response, error) {
+	// We get a panic trying to index a map and update a struct field in place, so copy the
+	// structure.
 	x := gist.Files[gistFilename]
-
 	ct := string(content)
+
+	// Reassign the content to the gist in-place, then pass to Gists.Edit.
 	x.Content = &ct
+
 	gist.Files[gistFilename] = x
-	fmt.Println(*gist.ID)
 	return client(accessToken).Gists.Edit(context.Background(), *gist.ID, gist)
 }
 
-// A response from syncing to github.
-// Content is the string representing the content
-// of the file that should be synced, whether from
-// the local file or from the remote gist.
-// If the file is nil, that means the content represents
-// the remote gist.
+// SyncData is the data needed to sync a remote gist
+// with a local file.
 type SyncData struct {
 	AccessToken  string
 	Gist         *github.Gist
@@ -68,10 +56,8 @@ type SyncData struct {
 	Error error
 }
 
-// Given an access token, file handle, gist ID and a channel writes to channel a struct
-// with the data needed to sync a local file and a gist.
+// GetSyncData gets the SyncData needed for syncing a remote gist and an associated local file.
 func GetSyncData(accessToken string, gistFile conf.File, syncDataChan chan<- SyncData) {
-	////fileNameFromGist := github.GistFilename(stat.Name())//fileNameFromGist := github.GistFilename(stat.Name())
 	fh, err := os.Open(gistFile.Path)
 	if err != nil {
 		syncDataChan <- SyncData{
@@ -98,7 +84,7 @@ func GetSyncData(accessToken string, gistFile conf.File, syncDataChan chan<- Syn
 		return
 	}
 	fileLastMod := stat.ModTime()
-	gist, resp, err := GetGistData(accessToken, gistFile.Id)
+	gist, resp, err := getGistData(accessToken, gistFile.Id)
 	if err != nil {
 		syncDataChan <- SyncData{
 			AccessToken:  accessToken,
@@ -145,11 +131,12 @@ func GetSyncData(accessToken string, gistFile conf.File, syncDataChan chan<- Syn
 		Error:        nil}
 }
 
+// Sync takes care of syncing the local file with the remote gist given
+// SyncData.
 func Sync(syncDataChan <-chan SyncData, syncChan chan<- bool) {
 	data := <-syncDataChan
 	gist := *data.Gist
 	gistContent := gist.Files[data.GistFilename].Content
-	log.Printf("sync %s", data.FilePath)
 	if *gistContent == string(data.FileContent) {
 		log.Printf("content is equal for file and gist.")
 		syncChan <- true
@@ -157,7 +144,7 @@ func Sync(syncDataChan <-chan SyncData, syncChan chan<- bool) {
 	}
 	if data.FileLastMod.After(*gist.UpdatedAt) {
 		log.Println("the file is newer, push file contents to gist")
-		_, _, err := UpdateGist(data.AccessToken, &gist, data.GistFilename, data.FileContent)
+		_, _, err := updateGist(data.AccessToken, &gist, data.GistFilename, data.FileContent)
 		if err != nil {
 			fmt.Println("ERROR")
 		}
@@ -167,8 +154,6 @@ func Sync(syncDataChan <-chan SyncData, syncChan chan<- bool) {
 		gistContent := []byte(*gist.Files[data.GistFilename].Content)
 		err := ioutil.WriteFile(data.FilePath, gistContent, 0644)
 		if err != nil {
-			fmt.Println("ERROR")
-
 			fmt.Println(err)
 			syncChan <- true
 			return
