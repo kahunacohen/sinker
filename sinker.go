@@ -36,6 +36,17 @@ func logResult(f conf.File, result gist.SyncResult) {
 	}
 	fmt.Println()
 }
+func drainResultChannel(files []conf.File, syncResultChan chan gist.SyncResult, verbose bool) {
+	for i, f := range files {
+		result := <-syncResultChan
+		if verbose {
+			logResult(f, result)
+		}
+		if i == len(files)-1 {
+			close(syncResultChan)
+		}
+	}
+}
 func main() {
 	opts := getOpts()
 	config, err := conf.Load("/Users/acohen/.sinkerrc.json", opts)
@@ -48,14 +59,5 @@ func main() {
 		go gist.GetSyncData(gistFile, syncDataChan, config)
 		go gist.Sync(syncDataChan, syncResultChan, config)
 	}
-	for i, f := range config.Gist.Files {
-		result := <-syncResultChan
-		if opts.Verbose {
-			logResult(f, result)
-		}
-		if i == len(config.Gist.Files)-1 {
-			close(syncResultChan)
-		}
-	}
-
+	drainResultChannel(config.Gist.Files, syncResultChan, opts.Verbose)
 }
