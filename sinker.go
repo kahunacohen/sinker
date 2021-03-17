@@ -12,7 +12,6 @@ import (
 )
 
 func getOpts() conf.Opts {
-
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "sinker syncs a set of local files to associated, remote gists, given a .sinker.json config file. Usage of %s:\n", os.Args[0])
 		flag.PrintDefaults()
@@ -36,6 +35,7 @@ func logResult(f conf.File, result gist.SyncResult) {
 	}
 	fmt.Println()
 }
+
 func drainResultChannel(files []conf.File, syncResultChan chan gist.SyncResult, verbose bool) {
 	for i, f := range files {
 		result := <-syncResultChan
@@ -47,6 +47,7 @@ func drainResultChannel(files []conf.File, syncResultChan chan gist.SyncResult, 
 		}
 	}
 }
+
 func main() {
 	opts := getOpts()
 	config, err := conf.Load("/Users/acohen/.sinkerrc.json", opts)

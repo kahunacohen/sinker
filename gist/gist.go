@@ -61,18 +61,23 @@ type SyncResult struct {
 	Error              error
 }
 
+func sendErrorToChan(err error, prependMsg string, syncDataChan chan SyncData, gistFile conf.File, config *conf.Conf) {
+	syncDataChan <- SyncData{
+		AccessToken:  config.Gist.AccessToken,
+		Gist:         nil,
+		GistFilename: "",
+		FileContent:  nil,
+		FilePath:     gistFile.Path,
+		FileLastMod:  nil,
+		Error:        fmt.Errorf(prependMsg+": ", err)}
+}
+
 // GetSyncData gets the SyncData needed for syncing a remote gist and an associated local file.
-func GetSyncData(gistFile conf.File, syncDataChan chan<- SyncData, config *conf.Conf) {
+func GetSyncData(gistFile conf.File, syncDataChan chan SyncData, config *conf.Conf) {
 	fh, err := os.Open(gistFile.Path)
 	if err != nil {
-		syncDataChan <- SyncData{
-			AccessToken:  config.Gist.AccessToken,
-			Gist:         nil,
-			GistFilename: "",
-			FileContent:  nil,
-			FilePath:     gistFile.Path,
-			FileLastMod:  nil,
-			Error:        err}
+		sendErrorToChan(err, fmt.Sprintf("error openning file %s", gistFile.Path),
+			syncDataChan, gistFile, config)
 		return
 	}
 	defer fh.Close()
