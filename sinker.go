@@ -26,7 +26,7 @@ func main() {
 	opts := getOpts()
 	config, err := conf.Load("/Users/acohen/.sinkerrc.json", opts)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("unable to parse .sinkerrc.json: %v", err)
 	}
 	syncDataChan := make(chan gist.SyncData)
 	syncResultChan := make(chan gist.SyncResult)
