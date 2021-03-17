@@ -22,6 +22,20 @@ func getOpts() conf.Opts {
 	flag.Parse()
 	return conf.Opts{Verbose: verboseVar}
 }
+func logResult(f conf.File, result gist.SyncResult) {
+	log.Printf("syncing %s", f.Path)
+	if result.Error != nil {
+		log.Fatalf("sinker exited. Error: %v", result.Error)
+	}
+	if result.FileOverwritesGist {
+		log.Println("file is newer, overwrote gist")
+	} else if result.GistOverwritesFile {
+		log.Println("gist newer, overwrote file")
+	} else {
+		log.Println("file and gist have the same content. noop")
+	}
+	fmt.Println()
+}
 func main() {
 	opts := getOpts()
 	config, err := conf.Load("/Users/acohen/.sinkerrc.json", opts)
@@ -34,19 +48,10 @@ func main() {
 		go gist.GetSyncData(gistFile, syncDataChan, config)
 		go gist.Sync(syncDataChan, syncResultChan, config)
 	}
-	for i := range config.Gist.Files {
+	for i, f := range config.Gist.Files {
 		result := <-syncResultChan
 		if opts.Verbose {
-			if result.Error != nil {
-				log.Fatalf("sinker exited. Error: %v", result.Error)
-			}
-			if result.FileOverwritesGist {
-				log.Println("file is newer, overwrote gist")
-			} else if result.GistOverwritesFile {
-				log.Println("gist newer, overwrote file")
-			} else {
-				log.Println("file and gist have the same content...noop")
-			}
+			logResult(f, result)
 		}
 		if i == len(config.Gist.Files)-1 {
 			close(syncResultChan)
