@@ -34,7 +34,7 @@ func readSinkerRc(dir string) ([]byte, error) {
 }
 
 // Parses the json from the config.
-func parseJsonConfig(data []byte) (Conf, error) {
+func parseJSONConfig(data []byte) (Conf, error) {
 	var conf Conf
 	err := json.Unmarshal(data, &conf)
 	return conf, err
@@ -50,7 +50,7 @@ func Load(dir string, opts Opts) (*Conf, error) {
 	if err != nil {
 		return nil, err
 	}
-	conf, err := parseJsonConfig(data)
+	conf, err := parseJSONConfig(data)
 	conf.Opts = opts
 	if err != nil {
 		return nil, err

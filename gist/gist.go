@@ -140,6 +140,15 @@ func GetSyncData(gistFile conf.File, syncDataChan chan<- SyncData, config *conf.
 // SyncData.
 func Sync(syncDataChan <-chan SyncData, syncResultChan chan<- SyncResult, config *conf.Conf) {
 	data := <-syncDataChan
+
+	// Intercept data and check for bad input data,
+	// propogating it to main. ie. maybe the local file wasn't readable etc.
+	if data.Error != nil {
+		syncResultChan <- SyncResult{Error: data.Error, FileOverwritesGist: false, GistOverwritesFile: false}
+		return
+	}
+
+	// At this point, at least we know we have good input data.
 	gist := *data.Gist
 	gistContent := gist.Files[data.GistFilename].Content
 	if *gistContent == string(data.FileContent) {
