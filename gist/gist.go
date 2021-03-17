@@ -61,7 +61,9 @@ type SyncResult struct {
 	Error              error
 }
 
-func sendErrorToChan(err error, prependMsg string, syncDataChan chan SyncData, gistFile conf.File, config *conf.Conf) {
+func sendErrToOutChan(prependMsg string, err error, syncDataChan chan SyncData,
+	gistFile conf.File, config *conf.Conf) {
+
 	syncDataChan <- SyncData{
 		AccessToken:  config.Gist.AccessToken,
 		Gist:         nil,
@@ -74,63 +76,50 @@ func sendErrorToChan(err error, prependMsg string, syncDataChan chan SyncData, g
 
 // GetSyncData gets the SyncData needed for syncing a remote gist and an associated local file.
 func GetSyncData(gistFile conf.File, syncDataChan chan SyncData, config *conf.Conf) {
+
+	// Handle possible errors.
+
+	// Open the file.
 	fh, err := os.Open(gistFile.Path)
 	if err != nil {
-		sendErrorToChan(err, fmt.Sprintf("error openning file %s", gistFile.Path),
+		sendErrToOutChan(fmt.Sprintf("couldn't open file %s", gistFile.Path), err,
 			syncDataChan, gistFile, config)
 		return
 	}
 	defer fh.Close()
+
+	// Get file info.
 	stat, err := fh.Stat()
 	if err != nil {
-		syncDataChan <- SyncData{
-			AccessToken:  config.Gist.AccessToken,
-			Gist:         nil,
-			GistFilename: "",
-			FileContent:  nil,
-			FilePath:     gistFile.Path,
-			FileLastMod:  nil,
-			Error:        err}
+		sendErrToOutChan(fmt.Sprintf("couldn't get file info on file %s", gistFile.Path), err,
+			syncDataChan, gistFile, config)
 		return
 	}
 	fileLastMod := stat.ModTime()
+
+	// Try to get gist from github.
 	gist, resp, err := getGistData(config.Gist.AccessToken, gistFile.Id)
 	if err != nil {
-		syncDataChan <- SyncData{
-			AccessToken:  config.Gist.AccessToken,
-			Gist:         nil,
-			GistFilename: "",
-			FileContent:  nil,
-			FilePath:     gistFile.Path,
-			FileLastMod:  &fileLastMod,
-			Error:        err}
+		sendErrToOutChan("couldn't get gist from github", err, syncDataChan, gistFile, config)
 		return
 	}
 	if resp.Response.StatusCode != 200 {
-		syncDataChan <- SyncData{
-			AccessToken:  config.Gist.AccessToken,
-			Gist:         nil,
-			GistFilename: "",
-			FileContent:  nil,
-			FilePath:     gistFile.Path,
-			FileLastMod:  &fileLastMod,
-			Error:        fmt.Errorf("response from github was %d")}
-	}
-
-	// Get the filename from gist so we can index into the files map.
-	//fileNameFromGist := github.GistFilename(stat.Name())
-	fileContent, err := ioutil.ReadFile(gistFile.Path)
-	if err != nil {
-		syncDataChan <- SyncData{
-			AccessToken:  config.Gist.AccessToken,
-			Gist:         nil,
-			GistFilename: "",
-			FileContent:  nil,
-			FilePath:     gistFile.Path,
-			FileLastMod:  &fileLastMod,
-			Error:        err}
+		sendErrToOutChan(
+			fmt.Sprintf("github responded with %d when trying to upload file %s", resp.Response.StatusCode, gistFile.Path),
+			err, syncDataChan, gistFile, config)
 		return
 	}
+
+	// Get the file content.
+	fileContent, err := ioutil.ReadFile(gistFile.Path)
+	if err != nil {
+		sendErrToOutChan(fmt.Sprintf("couldn't get the file content for %s", gistFile.Path),
+			err, syncDataChan, gistFile, config)
+		return
+	}
+
+	// Normative case. We have everything we need to be able to attempt to
+	// sync.
 	syncDataChan <- SyncData{
 		AccessToken:  config.Gist.AccessToken,
 		Gist:         gist,
@@ -142,25 +131,27 @@ func GetSyncData(gistFile conf.File, syncDataChan chan SyncData, config *conf.Co
 }
 
 // Sync takes care of syncing the local file with the remote gist given
-// SyncData.
+// sending data via a channel useful for examining results.
 func Sync(syncDataChan <-chan SyncData, syncResultChan chan<- SyncResult, config *conf.Conf) {
 	data := <-syncDataChan
 
-	// Intercept data and check for bad input data,
-	// propogating it to main. ie. maybe the local file wasn't readable etc.
+	// Just in case we get bad input, intercept it and propogate to caller.
 	if data.Error != nil {
 		syncResultChan <- SyncResult{Error: data.Error, FileOverwritesGist: false, GistOverwritesFile: false}
 		return
 	}
-
-	// At this point, at least we know we have good input data.
+	// At this point, we know we have good input data.
 	gist := *data.Gist
 	gistContent := gist.Files[data.GistFilename].Content
+
+	// If the local content and remote content are equal, no need to do anything.
 	if *gistContent == string(data.FileContent) {
 		syncResultChan <- SyncResult{Error: nil, FileOverwritesGist: false, GistOverwritesFile: false}
 		return
 	}
+
 	if data.FileLastMod.After(*gist.UpdatedAt) {
+		// The file is newer, sync content to github.
 		_, _, err := updateGist(data.AccessToken, &gist, data.GistFilename, data.FileContent)
 		if err != nil {
 			syncResultChan <- SyncResult{Error: err, FileOverwritesGist: false, GistOverwritesFile: false}
@@ -168,8 +159,8 @@ func Sync(syncDataChan <-chan SyncData, syncResultChan chan<- SyncResult, config
 		}
 		// TODO check for response.
 		syncResultChan <- SyncResult{Error: nil, FileOverwritesGist: true, GistOverwritesFile: false}
-
 	} else {
+		// This remote content is newer, overwrite the file.
 		gistContent := []byte(*gist.Files[data.GistFilename].Content)
 		err := ioutil.WriteFile(data.FilePath, gistContent, 0644)
 		if err != nil {
