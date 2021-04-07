@@ -61,6 +61,7 @@ type SyncResult struct {
 	Error              error
 }
 
+// Centralizes code where we write errors to sync data channel
 func sendErrToOutChan(prependMsg string, err error, syncDataChan chan SyncData,
 	gistFile conf.File, config *conf.Conf) {
 
