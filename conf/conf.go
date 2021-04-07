@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 )
 
+// A struct defining our single flag option from the command-line.
 type Opts struct {
 	Verbose bool
 }
@@ -18,6 +19,7 @@ type Gist struct {
 	Files       []File
 }
 
+// A composed struct representing the app's configuration.
 type Conf struct {
 	Gist Gist
 	Opts Opts

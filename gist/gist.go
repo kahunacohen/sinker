@@ -86,6 +86,7 @@ func GetSyncData(gistFile conf.File, syncDataChan chan SyncData, config *conf.Co
 			syncDataChan, gistFile, config)
 		return
 	}
+	// defer is novel in go, the function executes at the end of function scope
 	defer fh.Close()
 
 	// Get file info.
