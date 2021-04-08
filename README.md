@@ -2,7 +2,7 @@
 
 A modular utility written in golang for syncing files to various backends written as an experiment to understand Golang.
 
-## Impressions
+## Background
 
 I did this to explore a new generation of languages such as golang, rust, swift etc. In general these bring several things to the table:
 
@@ -12,7 +12,9 @@ I did this to explore a new generation of languages such as golang, rust, swift 
 * more predictible run-time error handling
 * baked-in concurrent facilities
 
-### Pros
+### Golang
+
+#### Pros
 * Enough type safety, but not too much
 * Simple enough to write quick command-line tools (good balance)
 * Compiles to portable, native code
@@ -26,7 +28,7 @@ I did this to explore a new generation of languages such as golang, rust, swift 
 * Concurrency as first class citizen
 * High demand, high salary
 
-### Cons
+#### Cons
 * Error handling can be clumsy
 * Conservative (e.g. still no generics)
 * handling null pointers and errors is not enforced compile-time.
