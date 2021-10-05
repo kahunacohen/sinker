@@ -1,3 +1,13 @@
+// A script that syncs gists. You must have a `.sinkerrc.json` file in your home directory in this form:
+// {
+// 	   "gist": {
+// 				"accessToken": "xxx",
+// 				"files": [
+// 					{"path": "path/to/file/on/your/filesystem", "id": "gistid"}
+// 				]
+// 		 }
+// }
+
 package main
 
 import (
@@ -58,7 +68,6 @@ func main() {
 	// Go handles errors by returning errors as values along with result.
 	// This is not enforced by the type system, rather it's idiomatic.
 	config, err := conf.Load("/Users/acohen/.sinkerrc.json", opts)
-
 	// By convention, we check error conditions first before doing our main
 	// operations. We prefix the existing error with more context usually as a string.
 	if err != nil {
